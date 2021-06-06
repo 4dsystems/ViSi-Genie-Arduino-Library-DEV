@@ -84,7 +84,7 @@ bool Genie::Begin(HardwareSerial &serial) {
   return Begin_common();
 }
 
-#if !defined(ARDUINO_ARCH_SAM) && !defined(ARDUINO_ARCH_RP2040)
+#if GENIE_SS_SUPPORT
 	bool Genie::Begin(SoftwareSerial &serial) {
 	  deviceSerial = &serial;
 	  tx_delay = 1000;
@@ -94,16 +94,16 @@ bool Genie::Begin(HardwareSerial &serial) {
 
 bool Genie::Begin_common() {
   genieStart = 1;
+  _incomming_queue.clear();
   uint32_t timeout_start = millis(); // timeout timer
   while ( millis() - timeout_start <= 2000 ) { 
-    if ( DoEvents() == GENIE_REPORT_OBJ && !genieStart ) {
-		Ping(250);
-		return 1;
-	}
+    if ( DoEvents() == GENIE_REPORT_OBJ && !genieStart ) return 1;
   }
-  if ( debugSerial != nullptr ) debugSerial->println("FAILED TO GO ONLINE DURING SETUP!");
-  uint8_t buffer[6] = { GENIE_DISCONNECTED, 0, 0, 0, 0 };
-  _incomming_queue.push_back(buffer, 6);
+  if ( debugSerial != nullptr ) debugSerial->println(F("[Genie]: Failed to detect display during setup"));
+  if ( UserHandler ) {
+    uint8_t buffer[6] = { GENIE_DISCONNECTED, 0, 0, 0, 0 };
+    _incomming_queue.push_back(buffer, 6);
+  }
   displayDetected = 0;
   return 0;
 }
@@ -115,19 +115,17 @@ bool Genie::Begin_common() {
 
 void Genie::AttachEventHandler(UserEventHandlerPtr userHandler) {
   UserHandler = userHandler;
-  if ( genieStart ) return; // setup() not called yet, let it handle online start status 
   if ( !displayDetected ) {
-    if ( debugSerial != nullptr ) debugSerial->println("[Genie]: disconnected");
+    if ( debugSerial != nullptr ) debugSerial->println(F("[Genie]: Handler setup, display disconnected"));
     uint8_t buffer[6] = { GENIE_DISCONNECTED, 0, 0, 0, 0 };
     _incomming_queue.push_back(buffer, 6);
   }
   else {
-    if ( debugSerial != nullptr ) debugSerial->println("[Genie]: online");
+    if ( debugSerial != nullptr ) debugSerial->println(F("[Genie]: Handler setup, display online"));
     uint8_t buffer[6] = { GENIE_READY, 0, 0, 0, 0 };
     _incomming_queue.push_back(buffer, 6);
   }
 }
-
 
 // ######################################
 // ## GetNextByte ####################### 
@@ -189,7 +187,7 @@ int32_t Genie::ReadObject(uint8_t object, uint8_t index, bool now) {
     return ((int32_t)(handler_response_values[3] << 8) | handler_response_values[4]);
   }
   if ( !_outgoing_queue.replace(buffer,5,1,2,3) ) {
-    if ( _outgoing_queue.size() == _outgoing_queue.capacity() ) if ( debugSerial != nullptr ) debugSerial->println("[Genie]: Overflow writing frames to queue!");
+    if ( _outgoing_queue.size() == _outgoing_queue.capacity() ) if ( debugSerial != nullptr ) debugSerial->println(F("[Genie]: Overflow writing frames to queue!"));
     _outgoing_queue.push_back(buffer,5);
   }
   if ( now && !displayDetected ) return -1;
@@ -239,7 +237,7 @@ bool Genie::WriteObject(uint8_t object, uint8_t index, uint16_t data) {
   if ( object == GENIE_OBJ_SCOPE ) return WriteObjectPriority(object,index,data);
   if ( object == GENIE_OBJ_COOL_GAUGE ) return WriteObjectPriority(object,index,data);
   if ( !_outgoing_queue.replace(buffer,7,1,2,3) ) {
-    if ( _outgoing_queue.size() == _outgoing_queue.capacity() ) if ( debugSerial != nullptr ) debugSerial->println("[Genie]: Overflow writing frames to queue!");
+    if ( _outgoing_queue.size() == _outgoing_queue.capacity() ) if ( debugSerial != nullptr ) debugSerial->println(F("[Genie]: Overflow writing frames to queue!"));
     ( GENIE_OBJ_FORM == object ) ? _outgoing_queue.push_front(buffer,7) : _outgoing_queue.push_back(buffer,7);
   }
   return 1;
@@ -321,7 +319,7 @@ void Genie::writeMode(uint8_t *bytes, uint8_t len) {
 // ######################################
 // ## Do Events #########################
 // ######################################
-int16_t Genie::DoEvents() {
+inline int16_t Genie::DoEvents() {
 
   if ( !displayDetected ) {
     if ( deviceSerial->available() > 24) while(deviceSerial->available()) deviceSerial->read();
@@ -329,14 +327,16 @@ int16_t Genie::DoEvents() {
     pendingACK = 0;
   }
 
+  /* Compatibility with sketches that include reset in setup, to prevent disconnection */
+  if ( displayDetected && (millis() < 7000) ) display_uptime = millis();
+
   uint32_t autoPing_swapSpeed;
 
-//  if ( !main_handler_active && millis() - autoPingTimer > ( ( displayDetected && !NAK_detected ) ? autoPing_swapSpeed = AUTO_PING_CYCLE : autoPing_swapSpeed = recover_pulse ) ) {
   if ( millis() - autoPingTimer > ( ( displayDetected && !NAK_detected ) ? autoPing_swapSpeed = AUTO_PING_CYCLE : autoPing_swapSpeed = recover_pulse ) ) {
     autoPingTimer = millis();
     if ( displayDetected && millis() - display_uptime > DISPLAY_TIMEOUT ) {
       display_uptime = millis();
-       if ( debugSerial != nullptr ) debugSerial->println("[Genie]: disconnected by display timeout");
+       if ( debugSerial != nullptr ) debugSerial->println(F("[Genie]: disconnected by display timeout"));
       uint8_t buffer[6] = { GENIE_DISCONNECTED, 0, 0, 0, 0 };
       _incomming_queue.push_back(buffer, 6);
       displayDetected = 0;
@@ -359,7 +359,7 @@ int16_t Genie::DoEvents() {
               if ( GENIE_OBJ_FORM == buffer[1] ) {
                 currentForm = buffer[4];
                 if ( !displayDetected ) {
-                  if ( debugSerial != nullptr ) debugSerial->println("[Genie]: online");
+                  if ( debugSerial != nullptr ) debugSerial->println(F("[Genie]: online"));
                   uint8_t buffer[6] = { GENIE_READY, 0, 0, 0, 0 };
                   if ( UserHandler != nullptr ) _incomming_queue.push_back(buffer, 6);
                   displayDetected = 1;
@@ -368,14 +368,14 @@ int16_t Genie::DoEvents() {
                   return GENIE_REPORT_OBJ;
                 }
                 if ( NAK_detected ) {
-                  if ( debugSerial != nullptr ) debugSerial->println("[Genie]: Recovered from NAK(s)");
+                  if ( debugSerial != nullptr ) debugSerial->println(F("[Genie]: Recovered from NAK(s)"));
                   NAK_recovery_counter = 0;
                   NAK_detected = 0;
                   return GENIE_REPORT_OBJ;
                 }
                 if ( autoPingFlag ) {
                   autoPingFlag = 0;
-                  if ( debugSerial != nullptr ) debugSerial->println("[Genie]: AutoPing success!");
+                  if ( debugSerial != nullptr ) debugSerial->println(F("[Genie]: AutoPing success!"));
                   display_uptime = millis();
                   return GENIE_REPORT_OBJ;
                 }
@@ -427,9 +427,9 @@ int16_t Genie::DoEvents() {
             UserByteReader( data[1], data[2] );
             if ( magic_report_len > 0 ) {
               if ( debugSerial != nullptr ) {
-                debugSerial->print("[Genie]: User forgot ");
+                debugSerial->print(F("[Genie]: User forgot "));
                 debugSerial->print(magic_report_len);
-                debugSerial->println(" magic byte(s). Flushing rest...");
+                debugSerial->println(F(" magic byte(s). Flushing rest..."));
               }
               uint32_t timeout = millis();
               while ( magic_report_len && millis() - timeout < 100 ) {
@@ -442,18 +442,18 @@ int16_t Genie::DoEvents() {
             }
             else {
               if ( debugSerial != nullptr ) {
-                if ( !magic_overpull_count ) debugSerial->println("[Genie]: User captured all magic bytes!");
+                if ( !magic_overpull_count ) debugSerial->println(F("[Genie]: User captured all magic bytes!"));
                 else {
-                  debugSerial->print("[Genie]: User captured all magic bytes, but tried to pull more than provided! (");
+                  debugSerial->print(F("[Genie]: User captured all magic bytes, but tried to pull more than provided! ("));
                   debugSerial->print(magic_overpull_count);
-                  debugSerial->println(" byte(s))"); 
+                  debugSerial->println(F(" byte(s))")); 
                 }
               }
             }
             display_uptime = millis();
           }
           else {
-            if ( debugSerial != nullptr ) debugSerial->println("[Genie]: MMagic bytes callback not set!");
+            if ( debugSerial != nullptr ) debugSerial->println(F("[Genie]: MMagic bytes callback not set!"));
             for ( uint16_t i = 0; i < data[2]; i++) deviceSerial->read();
           }
           uint32_t timeout = millis();
@@ -476,7 +476,7 @@ int16_t Genie::DoEvents() {
             // over/under pulling protection to be implemented as above
           }
           else {
-            if ( debugSerial != nullptr ) debugSerial->println("[Genie]: Magic double bytes callback not set!");
+            if ( debugSerial != nullptr ) debugSerial->println(F("[Genie]: Magic double bytes callback not set!"));
             for ( uint16_t i = 0; i < 2 * data[2]; i++) deviceSerial->read();
           }
           uint32_t timeout = millis();
@@ -487,13 +487,13 @@ int16_t Genie::DoEvents() {
 
       case GENIE_ACK: {
           deviceSerial->read();
-          if ( debugSerial != nullptr ) debugSerial->println("[Genie]: Received ACK!");
+          if ( debugSerial != nullptr ) debugSerial->println(F("[Genie]: Received ACK!"));
           pendingACK = 0;
           return GENIE_ACK;
         }
       case GENIE_NAK: {
           while ( deviceSerial->peek() == GENIE_NAK ) deviceSerial->read();
-          if ( !genieStart && !NAK_detected && debugSerial != nullptr ) debugSerial->println("[Genie]: Received NAK!");
+          if ( !genieStart && !NAK_detected && debugSerial != nullptr ) debugSerial->println(F("[Genie]: Received NAK!"));
           NAK_detected = 1;
           NAK_recovery_counter++;
           if ( NAK_recovery_counter >= 2 ) {
@@ -504,7 +504,7 @@ int16_t Genie::DoEvents() {
         }
       default: {
           if ( displayDetected && !NAK_detected && debugSerial != nullptr ) {
-            debugSerial->print("[Genie]: Bad Byte: ");
+            debugSerial->print(F("[Genie]: Bad Byte: "));
             debugSerial->println(deviceSerial->read());
           }
           break;
@@ -527,7 +527,7 @@ int16_t Genie::DoEvents() {
 void Genie::dequeue_processing() {
   if ( pendingACK ) { /* check if ACK timeout, clear flag */
     if ( millis() - pendingACK_timeout >= 500 ) {
-      if ( debugSerial != nullptr ) debugSerial->println("[Genie]: ACK timeout!");
+      if ( debugSerial != nullptr ) debugSerial->println(F("[Genie]: ACK timeout!"));
       pendingACK = 0;
     }
   }
@@ -1190,18 +1190,11 @@ int32_t GenieObject::read(bool state) {
 // ## GenieObject write #################
 // ######################################
 
-void GenieObject::write(uint16_t value) {
-  instance->WriteObject(object, index, value);
+void GenieObject::write(uint16_t data) {
+  instance->WriteObject(object, index, data);
 }
 
-// ######################################
-// ## GenieObject Reports & Events ######
-// ######################################
-
-bool GenieObject::event() {
-  return instance->EventIs(&instance->event_frame, (uint8_t)GENIE_REPORT_OBJ, (uint8_t)object, (uint8_t)index);
-}
-
-bool GenieObject::report() {
-  return instance->EventIs(&instance->event_frame, (uint8_t)GENIE_REPORT_EVENT, (uint8_t)object, (uint8_t)index);
+void GenieObject::write(const char * data) {
+  if ( object == GENIE_WRITE_STR ) instance->WriteStr(index, data);
+  else if ( object == GENIE_WRITE_INH_LABEL ) instance->WriteInhLabel(index, data);
 }

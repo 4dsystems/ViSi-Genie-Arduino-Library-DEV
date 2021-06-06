@@ -58,7 +58,13 @@
 #include "genie_buffer.h"
 #include <stdint.h>
 
-#if !defined(ARDUINO_ARCH_SAM) && !defined(ARDUINO_ARCH_RP2040)
+#define GENIE_SS_SUPPORT !defined(ARDUINO_ARCH_SAM) \
+                         && !defined(ARDUINO_ARCH_RP2040)
+
+#undef GENIE_SS_SUPPORT
+#define GENIE_SS_SUPPORT 1
+
+#if GENIE_SS_SUPPORT
   #include <SoftwareSerial.h>
 #endif
 
@@ -239,7 +245,7 @@ class Genie {
     Genie_Buffer<uint8_t, (uint32_t)pow(2, ceil(log(MAX_GENIE_EVENTS) / log(2))), 6> _incomming_queue; /* currentForm, cmd, object, index, data1, data2 */ 
     Genie_Buffer<uint8_t, (uint32_t)pow(2, ceil(log(MAX_GENIE_EVENTS) / log(2))), 7> _outgoing_queue; /* currentForm, cmd, object, index, data1, data2, crc */
     Genie                            ();
-#if !defined(ARDUINO_ARCH_SAM) && !defined(ARDUINO_ARCH_RP2040)
+#if GENIE_SS_SUPPORT
     bool        Begin                (SoftwareSerial &serial);
 #endif
     bool        Begin                (HardwareSerial &serial);
@@ -338,7 +344,7 @@ class Genie {
     uint32_t pingSpacer = 0; 
     uint8_t  recover_pulse = 50;
     uint32_t display_uptime = 0;
-    volatile bool     genieStart = 1;
+    bool     genieStart = 1;
     bool     block_dequeue = 0;
     virtual  void     dequeue_processing();
     uint8_t  magic_report_len = 0;
@@ -354,10 +360,10 @@ class Genie {
 class GenieObject {
   public:
     GenieObject                (Genie& _instance, uint8_t obj, uint8_t idx);
-    int32_t read               (bool state = 0);
-    void write                 (uint16_t value);
-    bool event                 ();
-    bool report                ();
+    int32_t read               (bool state = 1);
+    void write                 (uint16_t data);
+    void write                 (const char * data);
+
   private:
     uint8_t object = 0;
     uint8_t index = 0;
