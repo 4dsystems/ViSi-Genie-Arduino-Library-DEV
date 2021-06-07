@@ -61,9 +61,6 @@
 #define GENIE_SS_SUPPORT !defined(ARDUINO_ARCH_SAM) \
                          && !defined(ARDUINO_ARCH_RP2040)
 
-#undef GENIE_SS_SUPPORT
-#define GENIE_SS_SUPPORT 1
-
 #if GENIE_SS_SUPPORT
   #include <SoftwareSerial.h>
 #endif
