@@ -1,10 +1,11 @@
-/////////////////////// GenieArduino 2021 - Unreleased ///////////////////////
+/////////////////////// GenieArduino DEV ///////////////////////
 //
 //      Library to utilize the 4D Systems Genie interface to displays
 //      that have been created using the Visi-Genie creator platform.
 //      This is intended to be used with the Arduino platform.
 //
 //      Improvements/Updates by
+//		  Antonio Brewer & 4D Systems Engineering, January 2022, www.4dsystems.com.au
 //		  Antonio Brewer & 4D Systems Engineering, July 2021, www.4dsystems.com.au
 //		  Antonio Brewer & 4D Systems Engineering, June 2018, www.4dsystems.com.au
 //        4D Systems Engineering, August 2017, www.4dsystems.com.au
@@ -59,7 +60,8 @@
 #include <stdint.h>
 
 #define GENIE_SS_SUPPORT !defined(ARDUINO_ARCH_SAM) \
-                         && !defined(ARDUINO_ARCH_RP2040)
+                         && !defined(ARDUINO_ARCH_RP2040) \
+						 && !defined(ARDUINO_ARCH_SAMD)
 
 #if GENIE_SS_SUPPORT
   #include <SoftwareSerial.h>
@@ -68,7 +70,7 @@
 #ifndef genieArduinoDEV_h
 #define genieArduinoDEV_h
 
-#define GENIE_VERSION    "GenieArduino 2021"   // DD-MM-YYYY
+#define GENIE_VERSION    "GenieArduino 2022"   // DD-MM-YYYY
 
 // Genie commands & replys:
 

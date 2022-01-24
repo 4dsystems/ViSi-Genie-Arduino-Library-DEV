@@ -1,10 +1,11 @@
-/////////////////////// GenieArduino 2021 - Unreleased ///////////////////////
+/////////////////////// GenieArduino 2022 - DEV ///////////////////////
 //
 //      Library to utilise the 4D Systems Genie interface to displays
 //      that have been created using the Visi-Genie creator platform.
 //      This is intended to be used with the Arduino platform.
 //
 //      Improvements/Updates by
+//		  Antonio Brewer & 4D Systems Engineering, January 2022, www.4dsystems.com.au
 //		  Antonio Brewer & 4D Systems Engineering, July 2021, www.4dsystems.com.au
 //		  Antonio Brewer & 4D Systems Engineering, June 2018, www.4dsystems.com.au
 //        4D Systems Engineering, August 2017, www.4dsystems.com.au
