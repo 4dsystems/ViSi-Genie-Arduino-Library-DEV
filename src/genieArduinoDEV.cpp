@@ -5,6 +5,7 @@
 //      This is intended to be used with the Arduino platform.
 //
 //      Improvements/Updates by
+//		  Antonio Brewer & 4D Systems Engineering, February 2022, www.4dsystems.com.au
 //		  Antonio Brewer & 4D Systems Engineering, January 2022, www.4dsystems.com.au
 //		  Antonio Brewer & 4D Systems Engineering, July 2021, www.4dsystems.com.au
 //		  Antonio Brewer & 4D Systems Engineering, June 2018, www.4dsystems.com.au
@@ -128,7 +129,6 @@ int16_t Genie::GetForm() {
 }
 
 void Genie::SetForm(uint8_t newForm) {
-  _outgoing_queue.clear();
   WriteObject(GENIE_OBJ_FORM, newForm, (uint16_t)0x0000);
 }
 
