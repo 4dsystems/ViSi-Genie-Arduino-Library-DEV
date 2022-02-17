@@ -25,7 +25,7 @@ Please refer to the 4D Systems website, namingly the Workshop4 Product Page, for
 
 ## Installation
 
-Library folder should be placed in the C:\Users\%USERNAME%\Documents\Arduino\Libraries\ folder, or equivalent. (restart the IDE if already open).
+Library folder should be placed in the C:\\Users\\%USERNAME%\\Documents\\Arduino\\Libraries\\ folder, or equivalent. (restart the IDE if already open).
 
 PLEASE ensure that the old library (if installed) has been removed completely so it does not conflict.
 
@@ -130,14 +130,13 @@ Returns whether or not the display is detected
 
     if (genie.IsOnline()) {
         // Do something in response to the display
-        // being offline
+        // being online
     }
 
 ### GetUptime()
 Returns the time in milliseconds that the display has been continuously online.
 
     unsigned long uptime = genie.GetUptime();
-
 
 ### GetForm()
 Returns whether or not the display is detected
