@@ -1,5 +1,5 @@
 #######################################
-# Syntax Coloring Map GenieArduino 2021 
+# Syntax Coloring Map GenieArduinoDEV 
 #######################################
 
 #######################################
@@ -23,7 +23,7 @@ debug	KEYWORD2
 ReadObject	KEYWORD2
 WriteObject	KEYWORD2
 WriteContrast	KEYWORD2
-WriteStrU	KEYWORD2
+WriteStr	KEYWORD2
 WriteStrU	KEYWORD2
 WriteInhLabel	KEYWORD2
 EventIs	KEYWORD2
@@ -34,7 +34,7 @@ AttachEventHandler	KEYWORD2
 AttachMagicByteReader	KEYWORD2
 AttachMagicDoubleByteReader	KEYWORD2
 pulse	KEYWORD2
-assignDebugPort	KEYWORD2
+AttachDebugStream	KEYWORD2
 WriteMagicBytes	KEYWORD2
 WriteMagicDBytes	KEYWORD2
 GetNextByte	KEYWORD2
@@ -49,6 +49,11 @@ uptime	KEYWORD2
 rxPin	KEYWORD2
 event	KEYWORD2
 report	KEYWORD2
+IsOnline	KEYWORD2
+GetForm	KEYWORD2
+SetForm	KEYWORD2
+SetRecoveryInterval	KEYWORD2
+GetUptime	KEYWORD2
 
 
 

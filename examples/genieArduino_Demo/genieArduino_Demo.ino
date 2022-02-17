@@ -24,7 +24,7 @@
 // ViSi-Genie Arduino Danger Shield - https://docs.4dsystems.com.au/app-note/4D-AN-00025
 
 Genie genie;
-#define RESETLINE 4  // Change this if you are not using an Arduino Adaptor Shield Version 2 (see code below)
+#define RESETLINE 4  // Arduino pin D4, Change this if you are not using an Arduino Adaptor Shield Version 2 (see code below)
 void setup()
 {
   // Use a Serial Begin and serial port of your choice in your code and use the 
@@ -33,34 +33,37 @@ void setup()
   // Some Arduino variants use Serial1 for the TX/RX pins, as Serial0 is for USB.
   Serial.begin(200000);  // Serial0 @ 200000 (200K) Baud
 
-  // Reset the Display (change D4 to D2 if you have original 4D Arduino Adaptor)
+  // Reset the Display
   // THIS IS IMPORTANT AND CAN PREVENT OUT OF SYNC ISSUES, SLOW SPEED RESPONSE ETC
   // If NOT using a 4D Arduino Adaptor, digitalWrites must be reversed as Display Reset is Active Low, and
   // the 4D Arduino Adaptors invert this signal so must be Active High.  
   pinMode(RESETLINE, OUTPUT);  // Set D4 on Arduino to Output (4D Arduino Adaptor V2 - Display Reset)
-  digitalWrite(RESETLINE, 1);  // Reset the Display via D4
+  digitalWrite(RESETLINE, 1);  // Reset the Display via D4 (Change this to 0 if wired without Arduino Adaptor Shield)
   delay(100);
-  digitalWrite(RESETLINE, 0);  // unReset the Display via D4
+  digitalWrite(RESETLINE, 0);  // unReset the Display via D4 (Change this to 1 if wired without Arduino Adaptor Shield)
 
   while (!genie.Begin(Serial)); // Set up Genie to use Serial port, but also returns if the Display has responded and is online
 
-  if (genie.online()) // When the display has responded above, do the following once its online
+  if (genie.IsOnline()) // When the display has responded above, do the following once its online
   {
     genie.AttachEventHandler(myGenieEventHandler); // Attach the user function Event Handler for processing events
   } 
 
+  //Changes to Form0 - (Already on Form0 but illustrating how to change form)
+  genie.SetForm(0);
+  
   // Set the brightness/Contrast of the Display - (Not needed but illustrates how)
   // Most Displays use 0-15 for Brightness Control, where 0 = Display OFF, though to 15 = Max Brightness ON.
   // Some displays are more basic, 1 (or higher) = Display ON, 0 = Display OFF.  
   genie.WriteContrast(10); // About 2/3 Max Brightness
-
+  
   //Write a string to the Display to show the version of the library used
   genie.WriteStr(0, GENIE_VERSION);
 }
 
 void loop()
 {
-  static long waitPeriod = millis();
+  static unsigned long waitPeriod = millis();
   static int gaugeAddVal = 1; // Simulation code variable. Value to change the gauge by each loop
   static int gaugeVal = 50; // Simulation code variable. Value to start the gauge at when powered on
 

@@ -5,8 +5,12 @@ ViSi-Genie-Arduino-Library-DEV (A.K.A genieArduinoDEV)
 
 Arduino Library for 4D Systems ViSi-Genie Environment - Development Version
 
+This library is the newly improved version of the original genieArduino library, and is classed as **STABLE**.
+This will eventually become the main genieArduino library in time, and is encouraged to be used as it includes new features over the original.
+Original library found here: https://github.com/4dsystems/ViSi-Genie-Arduino-Library
+
 This library supports the following:
-Support for neagative numbers, unsigned longs, unsigned integers with the WriteStr function.
+Support for negative numbers, unsigned longs, unsigned integers with the WriteStr function.
 Features enhanced String Writing capability, no longer is a character Array the only viable option. 
 Support for Workshop4 PRO features.
 2+ displays connected to a single Arduino, and adds a Demo to illustrate how that is achieved.
@@ -21,7 +25,7 @@ Please refer to the 4D Systems website, namingly the Workshop4 Product Page, for
 
 ## Installation
 
-Library folder should be placed in the C:\Users\(User name)\My Documents\Arduino\Libraries\ folder, or equivalent. (restart the IDE if already open).
+Library folder should be placed in the C:\Users\%USERNAME%\Documents\Arduino\Libraries\ folder, or equivalent. (restart the IDE if already open).
 
 PLEASE ensure that the old library (if installed) has been removed completely so it does not conflict.
 
@@ -33,11 +37,11 @@ This library should be discoverable from the Arduino IDE Library Manager too.
 
 ## Example Sketch
 
-Inside the library are 4 example sketches, to assist with getting started using this library. Inside is also a ViSi-Genie Workshop4 project, which can be used on a range of 4D Systems displays (designed on a uLCD-32PTU however can be changed via Workshop4 menu). It illustrates how to use some of the commands in the library include Read Object, Write Object, Reported Messages, Write Contrast and Write String.
+Inside the library are 5 example sketches, to assist with getting started using this library. Inside is also a ViSi-Genie Workshop4 project, which can be used on a range of 4D Systems displays (designed on a gen4-uLCD-32DCT-CLB, however can be changed via Workshop4 menu). The demos illustrate how to use some of the commands in the library include Read Object, Write Object, Reported Messages, Write Contrast, Write String, etc.
 
 ## Tested with
 
-This library has been tested on the Duemilanove, Uno, Mega 1280, Mega 2560, Leonardo, Chipkit Max32, Due, Intel Galileo, Teensy and Yun (Software Serial only on Yun). 
+This library has been tested on the Duemilanove, Uno, Mega 1280, Mega 2560, Leonardo, Chipkit Max32, Due, Teensy, Yun (Software Serial only), Raspberry Pi Pico, Various SAM/SAMD boards, Teknic ClearCore. 
 Any problems discovered with this library, please contact technical support so fixes can be put in place, or seek support from our forum.
 
 ## Compatible 4D Systems Display Modules
@@ -55,28 +59,113 @@ This is the constructor for the library. It creates a unique instance that can b
 
     Genie genie; // Creates a new instance named 'genie'
 
-### Begin(Stream &serial)
-Creates an instance of ViSi Genie by assigning a *serial* stream
+### Begin(HardwareSerial &serial)
+Assigns a HardwareSerial *serial* object to the Genie instance
 
+| Parameters | Description |
+|:----------:| ----------- |
+| serial     | HardwareSerial object that represents the UART hardware |
+
+    Serial.begin(115200); // Open Serial @115200
+    // Can use other Serial UART's (Serial1, Serial2...) depending on your Arduino.
+    genie.Begin(Serial);  // Sets Serial/Serial0 to be used by the Genie instance
+
+### Begin(SoftwareSerial &serial)
+Assigns a SoftwareSerial *serial* object to the Genie instance
+
+| Parameters | Description |
+|:----------:| ----------- |
+| serial     | SoftwareSerial object that represents the UART hardware |
+
+    Genie genie;
+    SoftwareSerial GenieSerial(2, 3);
+
+    void setup() {
+        GenieSerial.begin(9600);  // Open Serial @9600
+        genie.Begin(GenieSerial); // Sets GenieSerial to be used by the Genie instance
+    }
+
+##### **Note**: _This is only available for boards that support SoftwareSerial. In case of compilation issues with SoftwareSerial, your board might not be supported by the SoftwareSerial library. Please submit an issue report [here](/issues/new)._
+
+### Begin(Stream &serial, uint16_t txDelay)
+Assigns a Stream *serial* object to the Genie instance. This allows alternative SoftwareSerial libraries to work with the library
+
+| Parameters | Description |
+|:----------:| ----------- |
+| serial     | Stream object that represents the UART hardware |
+| txDelay</br>(Optional) | Short delay in microseconds that separates each byte sent by the library. This can improve communication stability (default: 0) |
+
+    Genie genie;
+    AltSoftSerial GenieSerial;
+
+    void setup() {
+        GenieSerial.begin(19200); // Open Serial @19200
+        genie.Begin(GenieSerial); // Sets GenieSerial to be used by the Genie instance
+    }
+
+### AttachDebugStream(Stream &serial)
+Assigns a Stream *serial* object to the Genie instance for sending debug messages.
 
 | Parameters | Description |
 |:----------:| ----------- |
 | serial     | Stream object that represents the UART hardware |
 
-    Serial.begin(115200); // Open Serial @115200. Can use other Serial UART's (Serial1, Serial2...) depending on your Arduino.
-    genie.Begin(Serial);  // Sets Serial/Serial0 to be used by the Genie instance 'genie'
+    Genie genie;
+    SoftwareSerial GenieSerial(2, 3);
 
-### WriteContrast(uint16_t value)
-Sets the display contrast/brightness to a new *value*
+    void setup() {
+        Serial.begin(115200); // Open Serial @115200
+		GenieSerial.begin(9600);  // Open Serial @9600
+        genie.AttachDebugStream(Serial); // Sets main (USB) Serial for debugging
+        genie.Begin(GenieSerial); // Sets GenieSerial to be used by the Genie instance
+    }
 
-| Parameters | Description |
-|:----------:| ----------- |
-| value      | New brightness/contrast value. The range of this value depends on the 4D display, Typically 0-15 Range |
+### Ping(uint16_t interval)
+Sends a ping (form query) if the *interval* provided has been reached.
 
-    genie.WriteContrast(0); // Sets the contrast/brightness value to 0, effectively turning off the backlight
-    genie.WriteContrast(10); // Sets the contrast/brightness value to 10, about 2/3 max brightness
+    genie.Ping(500); // sends a Ping if the last command was at least 500ms ago
 
-### ReadObject(uint16_t object, uint16_t index)
+### IsOnline()
+Returns whether or not the display is detected
+
+    if (genie.IsOnline()) {
+        // Do something in response to the display
+        // being offline
+    }
+
+### GetUptime()
+Returns the time in milliseconds that the display has been continuously online.
+
+    unsigned long uptime = genie.GetUptime();
+
+
+### GetForm()
+Returns whether or not the display is detected
+
+    switch (genie.GetForm()) {
+        case 0:
+            // Do something when display is in Form0
+            break;
+        case 1:
+            // Do something when display is in Form1
+            break;
+        // ...
+        default:
+            // Do something if the display is not in an expected form
+            break;
+    }
+
+### SetForm(uint8_t newForm)
+Sets the display to the target *newform*
+
+    genie.SetForm(5); // Activate Form5 of the display
+
+### SetRecoveryInterval(uint8_t pulses)
+Sets the interval used when trying to recover connectivity and syncronization with the display
+
+    genie.SetRecoveryInterval(50); // Sets recovery interval to 50ms
+
+### ReadObject(uint16_t object, uint16_t index, bool now)
 Sends a request to read the value of the widget specified by *object* (ex: GENIE_OBJ_GAUGE) and *index*. The value will be sent as a GENIE_REPORT_OBJECT command.
 A full list of available objects (ex: GENIE_OBJ_GAUGE, GENIE_OBJ_SLIDER etc) can be found at the bottom of this Readme.
 
@@ -84,8 +173,12 @@ A full list of available objects (ex: GENIE_OBJ_GAUGE, GENIE_OBJ_SLIDER etc) can
 |:----------:| ----------- |
 | object     | Type of target widget |
 | index      | Index number of target widget |
+| now<br>(optional)| Indicates whether the function should return the value immediately |
 
-    genie.ReadObject(GENIE_OBJ_GAUGE, 0); // Request a report of the widget Gauge0
+    // Request a report of the widget Gauge0 immediately
+    int gauge0Val = genie.ReadObject(GENIE_OBJ_GAUGE, 0, true); 
+    // Request a report of Gauge1 and let it be handled through genie.DoEvents
+    genie.ReadObject(GENIE_OBJ_GAUGE, 1);
 
 ### WriteObject(uint16_t object, uint16_t index, uint16_t data)
 Updates the widget, specified by *object* (ex: GENIE_OBJ_GAUGE) and *index*, to a new value specified by *data*
@@ -100,7 +193,7 @@ A full list of available objects (ex: GENIE_OBJ_GAUGE, GENIE_OBJ_SLIDER etc) can
     genie.WriteObject(GENIE_OBJ_GAUGE, 0, 50); // Sets Gauge0 to 50
 
 ### WriteIntLedDigits(uint16_t index, int16_t data)
-Updates the Internal LedDigits specified by *index* to a new 16-bit value, specified by *data*. The widget parameter *Format* in ViSi Genie project should be set to Int16. Internal LedDigits are availble for Diablo and Pixxi displays.
+Updates the Internal LedDigits specified by *index* to a new 16-bit value, specified by *data*. The widget parameter *Format* in ViSi Genie project should be set to Int16. Internal LedDigits are available for Diablo and Pixxi displays.
 
 | Parameters | Description |
 |:----------:| ----------- |
@@ -110,7 +203,7 @@ Updates the Internal LedDigits specified by *index* to a new 16-bit value, speci
     genie.WriteIntLedDigits(0, 50); // Sets ILedDigits0 to 50
 
 ### WriteIntLedDigits(uint16_t index, float data)
-Updates the Internal LedDigits specified by *index* to a new 32-bit float value, specified by *data*. The widget parameter *Format* in ViSi Genie project should be set to any Float option. Internal LedDigits are availble for Diablo and Pixxi displays.
+Updates the Internal LedDigits specified by *index* to a new 32-bit float value, specified by *data*. The widget parameter *Format* in ViSi Genie project should be set to any Float option. Internal LedDigits are available for Diablo and Pixxi displays.
 
 | Parameters | Description |
 |:----------:| ----------- |
@@ -120,7 +213,7 @@ Updates the Internal LedDigits specified by *index* to a new 32-bit float value,
     genie.WriteIntLedDigits(0, 3.1416f); // Sets ILedDigits0 to 3.1416
 
 ### WriteIntLedDigits(uint16_t index, int32_t data)
-Updates the Internal LedDigits specified by *index* to a new 32-bit integer value, specified by *data*. The widget parameter *Format* in ViSi Genie project should be set to Int16. Internal LedDigits are availble for Diablo and Pixxi displays.
+Updates the Internal LedDigits specified by *index* to a new 32-bit integer value, specified by *data*. The widget parameter *Format* in ViSi Genie project should be set to Int16. Internal LedDigits are available for Diablo and Pixxi displays.
 
 | Parameters | Description |
 |:----------:| ----------- |
@@ -129,7 +222,17 @@ Updates the Internal LedDigits specified by *index* to a new 32-bit integer valu
 
     genie.WriteIntLedDigits(0, 1000000L); // Sets ILedDigits0 to 1000000
 
-### WriteStr(uint16_t index, char * string)
+### WriteContrast(uint16_t value)
+Sets the display contrast/brightness to a new *value*
+
+| Parameters | Description |
+|:----------:| ----------- |
+| value      | New brightness/contrast value. The range of this value depends on the 4D display, Typically 0-15 Range |
+
+    genie.WriteContrast(0); // Sets the contrast/brightness value to 0, effectively turning off the backlight
+    genie.WriteContrast(10); // Sets the contrast/brightness value to 10, about 2/3 max brightness
+
+### WriteStr(uint16_t index, const char * string)
 Updates the String widget specified by *index* with a new character string specified by *string*
 
 | Parameters | Description |
@@ -138,6 +241,17 @@ Updates the String widget specified by *index* with a new character string speci
 | string     | Character pointer containing the text to print in the String widget |
 
     genie.WriteStr(0, "Sample String"); // Set text in String0 to "Sample String"
+
+### WriteStr(uint16_t index, String s)
+Updates the String widget specified by *index* with a String widget specified by *s*
+
+| Parameters | Description |
+|:----------:| ----------- |
+| index      | Index number of target String |
+| s          | String object containing the text to print in the String widget |
+
+    String str = "This is string class";
+    genie.WriteStr(0, Str); // Writes the String class 'str' to String0
 
 ### WriteStr(uint16_t index, const __FlashStringHelper *ifsh)
 Updates the String widget specified by *index* with a string stored in program space (flash memory) specified by *ifsh*. This is only available for AVR boards.
@@ -149,18 +263,7 @@ Updates the String widget specified by *index* with a string stored in program s
 
     // Writes the string stored in flash memory to String1
 	genie.WriteStr(1, F("Hello from Flash Memory")); // For AVR Arduinos only
-                                                    
-### WriteStr(uint16_t index, const String &s)
-Updates the String widget specified by *index* with a String widget specified by *s*
-
-| Parameters | Description |
-|:----------:| ----------- |
-| index      | Index number of target String |
-| s          | String object containing the text to print in the String widget |
-
-    String str = "This is string class";
-    genie.WriteStr(0, Str); // Writes the String class 'str' to String0
-
+        
 ### WriteStrU(uint16_t index, uint16_t * string)
 Updates the String widget specified by *index* with a new Unicode (16-bit) character string specified by *string*
 
@@ -313,7 +416,7 @@ Updates the Inherent Label widget specified by *index* with a string stored in p
     // Writes the string stored in flash memory to ILabelB1
     genie.WriteInhLabel(1, F("Hello from Flash Memory")); // For AVR Arduinos only
 
-### WriteInhLabel(uint16_t index, const String &s)
+### WriteInhLabel(uint16_t index, String s)
 Updates the Inherent Label widget specified by *index* with a Inherent Label widget specified by *s*
 
 | Parameters | Description |

@@ -93,6 +93,12 @@ bool Genie::Begin(HardwareSerial &serial) {
 	}
 #endif
 
+bool Genie::Begin(Stream &serial, uint16_t txDelay) {
+  deviceSerial = &serial;
+  tx_delay = txDelay;
+  return Begin_common();
+}
+
 bool Genie::Begin_common() {
   genieStart = 1;
   _incomming_queue.clear();
@@ -109,6 +115,26 @@ bool Genie::Begin_common() {
   return 0;
 }
 
+void Genie::AttachDebugStream(Stream &serial) {
+  debugSerial = &serial;
+}
+
+bool Genie::IsOnline() {
+  return displayDetected;
+}
+
+int16_t Genie::GetForm() {
+  return currentForm;
+}
+
+void Genie::SetForm(uint8_t newForm) {
+  _outgoing_queue.clear();
+  WriteObject(GENIE_OBJ_FORM, newForm, (uint16_t)0x0000);
+}
+
+void Genie::SetRecoveryInterval(uint8_t pulses) {
+  recover_pulse = pulses;
+}
 
 // ######################################
 // ## AttachEventHandler ################ 
@@ -128,6 +154,19 @@ void Genie::AttachEventHandler(UserEventHandlerPtr userHandler) {
   }
 }
 
+void Genie::AttachMagicByteReader(UserBytePtr userHandler) {
+  UserByteReader = userHandler;
+}
+
+void Genie::AttachMagicDoubleByteReader(UserDoubleBytePtr userHandler) {
+  UserDoubleByteReader = userHandler;
+}
+
+uint32_t Genie::GetUptime() {
+  if ( displayDetected ) return millis() - display_uptime;
+  else return 0;
+}
+
 // ######################################
 // ## GetNextByte ####################### 
 // ######################################
@@ -142,8 +181,6 @@ int16_t Genie::GetNextByte() {
   return deviceSerial->read();
 }
 
-
-
 // ######################################
 // ## GetNextDoubleByte ################# 
 // ######################################
@@ -153,9 +190,6 @@ int32_t Genie::GetNextDoubleByte() {
   while ( millis() - timeout < 200 && deviceSerial->available() < 2 );
   return ((uint16_t)(deviceSerial->read() << 8) | deviceSerial->read());
 }
-
-
-
 
 // ######################################
 // ## Read Object ####################### 
@@ -228,6 +262,7 @@ bool Genie::WriteObject(uint8_t object, uint8_t index, uint16_t data) {
   DoEvents();
 
   if ( main_handler_active ) {
+    if ( GENIE_OBJ_FORM == object ) currentForm = index;
     return WriteObjectPriority(object,index,data);
   }
 
@@ -248,7 +283,6 @@ bool Genie::WriteObject(uint8_t object, uint8_t index, uint16_t data) {
   }
   return 1;
 }
-
 
 
 // ######################################
@@ -306,10 +340,6 @@ void Genie::Ping(uint16_t interval) {
     pingResponse = micros();
     pingSpacer = millis();
   }
-}
-
-void Genie::rxPin(uint8_t pin) {
-  pinMode(pin, INPUT_PULLUP);
 }
 
 // ######################################
@@ -468,9 +498,6 @@ inline int16_t Genie::DoEvents() {
           return GENIEM_REPORT_BYTES;
         }
 
-
-
-
       case GENIEM_REPORT_DBYTES: {
           if ( !displayDetected ) { deviceSerial->read(); return 0; }
           if ( deviceSerial->available() < 3 ) break; // magic report event less than 3 bytes? check again.
@@ -572,7 +599,6 @@ void Genie::DequeueEvent(genieFrame * buff) {
   event_frame = *buff;
 }
 
-
 // ######################################
 // ## Write Strings #####################
 // ######################################
@@ -582,7 +608,10 @@ bool Genie::WriteStr(uint8_t index, const char *string) {
     DoEvents();
     return 0;
   }
-  uint8_t checksum = 0, buffer[4+strlen(string)] = { GENIE_WRITE_STR, index, (uint8_t)strlen(string) };
+  uint8_t checksum = 0, buffer[4+strlen(string)];
+  buffer[0] = GENIE_WRITE_STR;
+  buffer[1] = index;
+  buffer[2] = (uint8_t)strlen(string);
   memmove(&buffer[3],&string[0],strlen(string));
   for ( uint8_t i = 0; i < sizeof(buffer) - 1; i++ ) checksum ^= buffer[i];
   buffer[sizeof(buffer) - 1] = checksum;
@@ -598,11 +627,14 @@ bool Genie::WriteStr(uint8_t index, const char *string) {
   return 1;
 }
 
+bool Genie::WriteStr(uint8_t index, String string) {
+  return WriteStr(index, string.c_str());
+}
+
 #ifdef AVR
 uint16_t Genie::WriteStr(uint16_t index, const __FlashStringHelper *ifsh){
 	PGM_P p = reinterpret_cast<PGM_P>(ifsh);
 	PGM_P p2 = reinterpret_cast<PGM_P>(ifsh);
-	size_t n = 0;
 	int len = 0;
 	while (1) {
 		unsigned char d = pgm_read_byte(p2++);
@@ -623,7 +655,7 @@ uint16_t Genie::WriteStr(uint16_t index, const __FlashStringHelper *ifsh){
 }
 #endif
 
-uint16_t Genie::WriteStr (uint16_t index, long n) { 
+uint16_t Genie::WriteStr(uint16_t index, long n) { 
 	char buf[8 * sizeof(long) + 1]; // Assumes 8-bit chars plus zero byte.
 	char *str = &buf[sizeof(buf) - 1];
 	
@@ -644,7 +676,7 @@ uint16_t Genie::WriteStr (uint16_t index, long n) {
 	return WriteStr(index, str);
 }
 
-uint16_t Genie::WriteStr (uint16_t index, long n, int base) { 
+uint16_t Genie::WriteStr(uint16_t index, long n, int base) { 
 	char buf[8 * sizeof(long) + 1]; // Assumes 8-bit chars plus zero byte.
 	char *str = &buf[sizeof(buf) - 1];
 	
@@ -685,15 +717,15 @@ uint16_t Genie::WriteStr (uint16_t index, long n, int base) {
     return WriteStr(index, str);
 }
 
-uint16_t Genie::WriteStr (uint16_t index, int n) { 
+uint16_t Genie::WriteStr(uint16_t index, int n) { 
 	return WriteStr (index, (long) n);
 }
 
-uint16_t Genie::WriteStr (uint16_t index, int n, int base) { 
+uint16_t Genie::WriteStr(uint16_t index, int n, int base) { 
 	return WriteStr (index, (long) n, base);
 }
 
-uint16_t Genie::WriteStr (uint16_t index, unsigned long n) { 
+uint16_t Genie::WriteStr(uint16_t index, unsigned long n) { 
 	char buf[8 * sizeof(long) + 1]; // Assumes 8-bit chars plus zero byte.
 	char *str = &buf[sizeof(buf) - 1];
 	
@@ -709,7 +741,7 @@ uint16_t Genie::WriteStr (uint16_t index, unsigned long n) {
 	return WriteStr(index, str);
 }
 
-uint16_t Genie::WriteStr (uint16_t index, unsigned long n, int base) { 
+uint16_t Genie::WriteStr(uint16_t index, unsigned long n, int base) { 
 	char buf[8 * sizeof(long) + 1]; // Assumes 8-bit chars plus zero byte.
 	char *str = &buf[sizeof(buf) - 1];
 	
@@ -727,16 +759,16 @@ uint16_t Genie::WriteStr (uint16_t index, unsigned long n, int base) {
     return WriteStr(index, str);
 }
 
-uint16_t Genie::WriteStr (uint16_t index, unsigned int n) { 
+uint16_t Genie::WriteStr(uint16_t index, unsigned int n) { 
 	return WriteStr (index, (unsigned long) n);
 }
 
-uint16_t Genie::WriteStr (uint16_t index, unsigned n, int base) { 
+uint16_t Genie::WriteStr(uint16_t index, unsigned n, int base) { 
 	return WriteStr (index, (unsigned long) n, base);
 }
 
 
-uint16_t Genie::WriteStr (uint16_t index, double number, int digits) { 
+uint16_t Genie::WriteStr(uint16_t index, double number, int digits) { 
 	char buf[8 * sizeof(long) + 1]; // Assumes 8-bit chars plus zero byte.
 	char *str = &buf[sizeof(buf) - 1];
 	*str = '\0';  
@@ -782,7 +814,7 @@ uint16_t Genie::WriteStr (uint16_t index, double number, int digits) {
 	return WriteStr(index, str);
 }
 
-uint16_t Genie::WriteStr (uint16_t index, double n){
+uint16_t Genie::WriteStr(uint16_t index, double n){
 	return WriteStr(index, n, 2);
 }
 
@@ -799,7 +831,10 @@ uint16_t Genie::WriteStrU (uint16_t index, uint16_t *string) {
   while (*p++) len++;
   if (len > 255) return -1;
 
-  uint8_t buffer[4+(len*2)] = { GENIE_WRITE_STRU, (uint8_t)index, (uint8_t)(len) };
+  uint8_t buffer[4+(len*2)];
+  buffer[0] = GENIE_WRITE_STRU;
+  buffer[1] = (uint8_t)index;
+  buffer[2] = (uint8_t)(len);
   for ( uint8_t i = 0; i < 3; i++ ) checksum ^= buffer[i];
 
   p = string;
@@ -835,7 +870,10 @@ bool Genie::WriteInhLabel(uint8_t index, const char *string) {
     DoEvents();
     return 0;
   }
-  uint8_t checksum = 0, buffer[4+strlen(string)] = { GENIE_WRITE_INH_LABEL, index, (uint8_t)strlen(string) };
+  uint8_t checksum = 0, buffer[4+strlen(string)];
+  buffer[0] = GENIE_WRITE_INH_LABEL;
+  buffer[1] = index;
+  buffer[2] = (uint8_t)strlen(string);
   memmove(&buffer[3],&string[0],strlen(string));
   for ( uint8_t i = 0; i < sizeof(buffer) - 1; i++ ) checksum ^= buffer[i];
   buffer[sizeof(buffer) - 1] = checksum;
@@ -849,6 +887,10 @@ bool Genie::WriteInhLabel(uint8_t index, const char *string) {
   block_dequeue = 0; // re-enable dequeue
 
   return 1;
+}
+
+bool Genie::WriteInhLabel(uint8_t index, String string) {
+  return WriteInhLabel(index, string.c_str());
 }
 
 // ######################################
@@ -1050,7 +1092,6 @@ uint16_t Genie::WriteInhLabel (uint16_t index, double number, int digits) {
 uint16_t Genie::WriteInhLabel(uint16_t index, const __FlashStringHelper *ifsh) {
   PGM_P p = reinterpret_cast<PGM_P>(ifsh);
   PGM_P p2 = reinterpret_cast<PGM_P>(ifsh);
-  //size_t n = 0;
   int len = 0;
   while (1) {
     unsigned char d = pgm_read_byte(p2++);
@@ -1069,6 +1110,14 @@ uint16_t Genie::WriteInhLabel(uint16_t index, const __FlashStringHelper *ifsh) {
 }
 #endif
 
+uint8_t Genie::EventIs(genieFrame * e, uint8_t cmd, uint8_t object, uint8_t index) {
+  return (e->reportObject.cmd == cmd && e->reportObject.object == object && e->reportObject.index == index);
+}
+
+uint16_t Genie::GetEventData(genieFrame * e) {
+  return (e->reportObject.data_msb << 8) + e->reportObject.data_lsb;
+}
+
 // ######################################
 // ## Write Magic Bytes #################
 // ######################################
@@ -1078,7 +1127,10 @@ int8_t Genie::WriteMagicBytes(uint8_t index, uint8_t *bytes, uint8_t len, uint8_
     DoEvents();
     return -1;
   }
-  uint8_t checksum = 0, buffer[4 + len] = { GENIEM_WRITE_BYTES, index, len };
+  uint8_t checksum = 0, buffer[4 + len];
+  buffer[0] = GENIEM_WRITE_BYTES;
+  buffer[1] = index;
+  buffer[2] = len;
   memmove(&buffer[3], bytes, len);
   for ( uint8_t i = 0; i < sizeof(buffer) - 1; i++ ) checksum ^= buffer[i];
   buffer[sizeof(buffer) - 1] = checksum;
