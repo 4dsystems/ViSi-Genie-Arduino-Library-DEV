@@ -5,6 +5,7 @@
 //      This is intended to be used with the Arduino platform.
 //
 //      Improvements/Updates by
+//        Antonio Brewer & 4D Systems Engineering, May 2022, www.4dsystems.com.au
 //        Antonio Brewer & 4D Systems Engineering, February 2022, www.4dsystems.com.au
 //        Antonio Brewer & 4D Systems Engineering, January 2022, www.4dsystems.com.au
 //        Antonio Brewer & 4D Systems Engineering, July 2021, www.4dsystems.com.au
@@ -62,10 +63,14 @@
 #include <stdint.h>
 
 #define GENIE_SS_SUPPORT !defined(ARDUINO_ARCH_SAM) \
+                      && !defined(ARDUINO_ARCH_SAMD) \
                       && !defined(ARDUINO_ARCH_RP2040) \
-                      && !defined(ARDUINO_ARCH_SAMD)
-                      // this lists the known board family that
-                      // doesn't support SoftwareSerial
+                      && !defined(ESP32) \
+                      && !defined(ESP8266)
+                      // This lists the known board families that
+                      // don't support SoftwareSerial.
+                      // If you add to this list, please contact us
+                      // to gain official support in the library.
 
 #if GENIE_SS_SUPPORT
 #include <SoftwareSerial.h>
