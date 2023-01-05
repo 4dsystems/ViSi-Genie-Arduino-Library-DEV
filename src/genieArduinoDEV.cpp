@@ -59,8 +59,8 @@
 
 #include "genieArduinoDEV.h"
 #include "genie_buffer.h"
-#include <math.h>
-#include <string.h>
+#include <cmath>
+#include <cstring>
 
 #define DEC 10
 #define HEX 16
@@ -76,6 +76,7 @@ Genie::Genie() {
   UserByteReader = nullptr;
   UserDoubleByteReader = nullptr;
   debugSerial = nullptr;
+  deviceSerial = nullptr;
 }
 
 // ######################################
@@ -102,7 +103,7 @@ bool Genie::Begin(Stream &serial, uint16_t txDelay) {
 }
 
 bool Genie::Begin_common() {
-  genieStart = 1;
+  genieStart = true;
   _incomming_queue.clear();
   uint32_t timeout_start = millis(); // timeout timer
   while ( millis() - timeout_start <= 2000 ) { 
@@ -113,19 +114,19 @@ bool Genie::Begin_common() {
     uint8_t buffer[6] = { GENIE_DISCONNECTED, 0, 0, 0, 0 };
     _incomming_queue.push_back(buffer, 6);
   }
-  displayDetected = 0;
-  return 0;
+  displayDetected = false;
+  return false;
 }
 
 void Genie::AttachDebugStream(Stream &serial) {
   debugSerial = &serial;
 }
 
-bool Genie::IsOnline() {
+bool Genie::IsOnline() const {
   return displayDetected;
 }
 
-int16_t Genie::GetForm() {
+int16_t Genie::GetForm() const {
   return currentForm;
 }
 
@@ -163,7 +164,7 @@ void Genie::AttachMagicDoubleByteReader(UserDoubleBytePtr userHandler) {
   UserDoubleByteReader = userHandler;
 }
 
-uint32_t Genie::GetUptime() {
+uint32_t Genie::GetUptime() const {
   if ( displayDetected ) return millis() - display_uptime;
   else return 0;
 }
@@ -205,17 +206,17 @@ int32_t Genie::ReadObject(uint8_t object, uint8_t index, bool now) {
   for ( uint8_t i = 1; i < 4; i++ ) checksum ^= buffer[i];
   buffer[4] = checksum;
   if ( now && displayDetected ) {
-    block_dequeue = 1; // disable dequeueing
+    block_dequeue = true; // disable dequeueing
     while ( pendingACK ) DoEvents(); // wait & finish pending ACKs
-    handler_response_request = 1; // request widget value immediately
+    handler_response_request = true; // request widget value immediately
     handler_response_values[1] = object;
     handler_response_values[2] = index;
     writeMode(&buffer[1],4);
-    block_dequeue = 0; // enable dequeueing
+    block_dequeue = false; // enable dequeueing
     uint32_t timeout = millis();
     while ( handler_response_request ) {
       if ( millis() - timeout > 100 ) {
-        handler_response_request = 0;
+        handler_response_request = false;
         return -1;
       }
       DoEvents();
@@ -239,14 +240,14 @@ uint16_t Genie::WriteIntLedDigits(uint16_t index, int16_t data) {
 }
 
 uint16_t Genie::WriteIntLedDigits(uint16_t index, float data) {
-    FloatLongFrame frame;
+    FloatLongFrame frame{};
     frame.floatValue = data;
     WriteObject(GENIE_OBJ_ILED_DIGITS_H, index, frame.wordValue[1]);
     return WriteObject(GENIE_OBJ_ILED_DIGITS_L, index, frame.wordValue[0]);
 }
 
 uint16_t Genie::WriteIntLedDigits(uint16_t index, int32_t data) {
-    FloatLongFrame frame;
+    FloatLongFrame frame{};
     frame.longValue = data;
     WriteObject(GENIE_OBJ_ILED_DIGITS_H, index, frame.wordValue[1]);
     return WriteObject(GENIE_OBJ_ILED_DIGITS_L, index, frame.wordValue[0]);
@@ -258,7 +259,7 @@ uint16_t Genie::WriteIntLedDigits(uint16_t index, int32_t data) {
 bool Genie::WriteObject(uint8_t object, uint8_t index, uint16_t data) {
   if ( !displayDetected ) {
     DoEvents();
-    return 0;
+    return false;
   }
   DoEvents();
 
@@ -282,9 +283,8 @@ bool Genie::WriteObject(uint8_t object, uint8_t index, uint16_t data) {
     }
     else _outgoing_queue.push_back(buffer,7); /* queue normal objects */
   }
-  return 1;
+  return true;
 }
-
 
 // ######################################
 // ## Write Object Priority Task ########
@@ -293,26 +293,23 @@ bool Genie::WriteObject(uint8_t object, uint8_t index, uint16_t data) {
 bool Genie::WriteObjectPriority(uint8_t object, uint8_t index, uint16_t data) {
   if ( !displayDetected ) {
     DoEvents();
-    return 0;
+    return false;
   }
   uint8_t checksum = 0, buffer[7] = { (uint8_t)currentForm, GENIE_WRITE_OBJ, object, index, (uint8_t)(data >> 8), (uint8_t)data, 0 };
   for ( uint8_t i = 1; i < 6; i++ ) checksum ^= buffer[i];
   buffer[6] = checksum;
-  block_dequeue = 1; // disable dequeue
+  block_dequeue = true; // disable dequeue
   while ( pendingACK ) DoEvents(); // wait pending ACKs
 
   writeMode(&buffer[1],6);
 
-  pendingACK = 1; // enable ACK check
+  pendingACK = true; // enable ACK check
   pendingACK_timeout = millis(); // reset ACK check timer
   while ( pendingACK ) DoEvents(); // wait pending ACKs
-  block_dequeue = 0; // re-enable dequeue
+  block_dequeue = false; // re-enable dequeue
 
-  return 1;
+  return true;
 }
-
-
-
 
 // ######################################
 // ## Write Contrast #################### 
@@ -324,11 +321,10 @@ bool Genie::WriteContrast(uint8_t value) {
   buffer[3] = checksum;
   if ( !_outgoing_queue.replace(buffer,4,1,1,1) ) {
     _outgoing_queue.push_back(buffer,4);
-    return 0;
+    return false;
   }
-  return 1;
+  return true;
 }
-
 
 // ######################################
 // ## User Ping #########################
@@ -337,7 +333,7 @@ void Genie::Ping(uint16_t interval) {
   if ( displayDetected && millis() - pingSpacer > interval ) {
     uint8_t buffer[4] = { (uint8_t)GENIE_READ_OBJ, GENIE_OBJ_FORM , 0, 10 };
     writeMode(buffer,4);
-    pingRequest = 1;
+    pingRequest = true;
     pingResponse = micros();
     pingSpacer = millis();
   }
@@ -361,7 +357,7 @@ inline int16_t Genie::DoEvents() {
   if ( !displayDetected ) {
     if ( deviceSerial->available() > 24) while(deviceSerial->available()) deviceSerial->read();
     currentForm = -1;
-    pendingACK = 0;
+    pendingACK = false;
   }
 
   /* Compatibility with sketches that include reset in setup, to prevent disconnection */
@@ -376,11 +372,11 @@ inline int16_t Genie::DoEvents() {
        if ( debugSerial != nullptr ) debugSerial->println(F("[Genie]: disconnected by display timeout"));
       uint8_t buffer[6] = { GENIE_DISCONNECTED, 0, 0, 0, 0 };
       _incomming_queue.push_back(buffer, 6);
-      displayDetected = 0;
+      displayDetected = false;
     }
     uint8_t buffer[4] = { (uint8_t)GENIE_READ_OBJ, GENIE_OBJ_FORM , 0, 10 };
     writeMode(buffer,4);
-    autoPingFlag = 1;
+    autoPingFlag = true;
   }
 
   if ( deviceSerial->available() > 0 ) {
@@ -397,37 +393,37 @@ inline int16_t Genie::DoEvents() {
                 currentForm = buffer[4];
                 if ( !displayDetected ) {
                   if ( debugSerial != nullptr ) debugSerial->println(F("[Genie]: online"));
-                  uint8_t buffer[6] = { GENIE_READY, 0, 0, 0, 0 };
-                  if ( UserHandler != nullptr ) _incomming_queue.push_back(buffer, 6);
-                  displayDetected = 1;
+                  uint8_t b[6] = { GENIE_READY, 0, 0, 0, 0 };
+                  if ( UserHandler != nullptr ) _incomming_queue.push_back(b, 6);
+                  displayDetected = true;
                   display_uptime = millis();
-                  genieStart = 0;
+                  genieStart = false;
                   return GENIE_REPORT_OBJ;
                 }
                 if ( NAK_detected ) {
                   if ( debugSerial != nullptr ) debugSerial->println(F("[Genie]: Recovered from NAK(s)"));
                   NAK_recovery_counter = 0;
-                  NAK_detected = 0;
+                  NAK_detected = false;
                   return GENIE_REPORT_OBJ;
                 }
                 if ( autoPingFlag ) {
-                  autoPingFlag = 0;
+                  autoPingFlag = false;
                   if ( debugSerial != nullptr ) debugSerial->println(F("[Genie]: AutoPing success!"));
                   display_uptime = millis();
                   return GENIE_REPORT_OBJ;
                 }
                 if ( pingRequest ) {
-                  pingRequest = 0;
+                  pingRequest = false;
                   uint32_t _time = micros() - pingResponse;
-                  uint8_t buffer[6] = { GENIE_PING, (uint8_t)(_time >> 24), (uint8_t)(_time >> 16), (uint8_t)(_time >> 8), (uint8_t)(_time) };
-                  _incomming_queue.push_back(buffer, 6);
+                  uint8_t b[6] = { GENIE_PING, (uint8_t)(_time >> 24), (uint8_t)(_time >> 16), (uint8_t)(_time >> 8), (uint8_t)(_time) };
+                  _incomming_queue.push_back(b, 6);
                   return GENIE_REPORT_OBJ;
                 }
               }
               if ( !displayDetected ) return 0; // block the ping request events when offline
               if ( handler_response_request && handler_response_values[1] == buffer[1] && handler_response_values[2] == buffer[2] ) {
                 memmove(handler_response_values, buffer, 6);
-                handler_response_request = 0;
+                handler_response_request = false;
                 return GENIE_REPORT_OBJ;
               }
               _incomming_queue.push_back(buffer, 6);
@@ -522,13 +518,13 @@ inline int16_t Genie::DoEvents() {
       case GENIE_ACK: {
           deviceSerial->read();
           if ( debugSerial != nullptr ) debugSerial->println(F("[Genie]: Received ACK!"));
-          pendingACK = 0;
+          pendingACK = false;
           return GENIE_ACK;
         }
       case GENIE_NAK: {
           while ( deviceSerial->peek() == GENIE_NAK ) deviceSerial->read();
           if ( !genieStart && !NAK_detected && debugSerial != nullptr ) debugSerial->println(F("[Genie]: Received NAK!"));
-          NAK_detected = 1;
+          NAK_detected = true;
           NAK_recovery_counter++;
           if ( NAK_recovery_counter >= 2 ) {
             NAK_recovery_counter = 0;
@@ -547,9 +543,9 @@ inline int16_t Genie::DoEvents() {
   }
   dequeue_processing();
   if ( !main_handler_active && _incomming_queue.size() && UserHandler != nullptr ) {
-    main_handler_active = 1;
+    main_handler_active = true;
     UserHandler();
-    main_handler_active = 0;
+    main_handler_active = false;
   }
   return -1;
 }
@@ -562,7 +558,7 @@ void Genie::dequeue_processing() {
   if ( pendingACK ) { /* check if ACK timeout, clear flag */
     if ( millis() - pendingACK_timeout >= 500 ) {
       if ( debugSerial != nullptr ) debugSerial->println(F("[Genie]: ACK timeout!"));
-      pendingACK = 0;
+      pendingACK = false;
     }
   }
   else { /* if no ACK is expected, send another request from queue */
@@ -586,7 +582,7 @@ void Genie::dequeue_processing() {
             break;
           }
       }
-      pendingACK = 1;
+      pendingACK = true;
       pendingACK_timeout = millis();
     }
   }
@@ -607,7 +603,7 @@ void Genie::DequeueEvent(genieFrame * buff) {
 bool Genie::WriteStr(uint8_t index, const char *string) {
   if ( !displayDetected ) {
     DoEvents();
-    return 0;
+    return false;
   }
   uint8_t checksum = 0, buffer[4+strlen(string)];
   buffer[0] = GENIE_WRITE_STR;
@@ -617,18 +613,18 @@ bool Genie::WriteStr(uint8_t index, const char *string) {
   for ( uint8_t i = 0; i < sizeof(buffer) - 1; i++ ) checksum ^= buffer[i];
   buffer[sizeof(buffer) - 1] = checksum;
 
-  block_dequeue = 1; // disable dequeue
+  block_dequeue = true; // disable dequeue
   while ( pendingACK ) DoEvents(); // wait pending ACKs
   writeMode(buffer,sizeof(buffer)); // write String
-  pendingACK = 1; // enable ACK check
+  pendingACK = true; // enable ACK check
   pendingACK_timeout = millis(); // reset ACK check timer
   while ( pendingACK ) DoEvents(); // wait pending ACKs
-  block_dequeue = 0; // re-enable dequeue
+  block_dequeue = false; // re-enable dequeue
 
-  return 1;
+  return true;
 }
 
-bool Genie::WriteStr(uint8_t index, String string) {
+bool Genie::WriteStr(uint8_t index, const String& string) {
   return WriteStr(index, string.c_str());
 }
 
@@ -703,18 +699,17 @@ uint16_t Genie::WriteStr(uint16_t index, long n, int base) {
 		}
 			
 	}
-	
-	else if(n<0) {
-		unsigned long n2 = (unsigned long)n;
-		uint8_t base2 = base;
-		do {
-		unsigned long m = n2;
-		n2 /= base2;
-		char c = m - base2 * n2;
-		*--str = c < 10 ? c + '0' : c + 'A' - 10;
-		} while(n2);
-		
-	}
+	else {
+        auto n2 = (unsigned long) n;
+        uint8_t base2 = base;
+        do {
+            unsigned long m = n2;
+            n2 /= base2;
+            char c = m - base2 * n2;
+            *--str = c < 10 ? c + '0' : c + 'A' - 10;
+        } while (n2);
+
+    }
     return WriteStr(index, str);
 }
 
@@ -768,7 +763,6 @@ uint16_t Genie::WriteStr(uint16_t index, unsigned n, int base) {
 	return WriteStr (index, (unsigned long) n, base);
 }
 
-
 uint16_t Genie::WriteStr(uint16_t index, double number, int digits) { 
 	char buf[8 * sizeof(long) + 1]; // Assumes 8-bit chars plus zero byte.
 	char *str = &buf[sizeof(buf) - 1];
@@ -780,11 +774,11 @@ uint16_t Genie::WriteStr(uint16_t index, double number, int digits) {
 	// Round correctly so that print(1.999, 2) prints as "2.00"
 	double rounding = 0.5;
 	for (int i=0; i<digits; ++i)
-	rounding /= 10.0;
+	    rounding /= 10.0;
 
 	number += rounding;
 
-	unsigned long int_part = (unsigned long)number;
+	auto int_part = (unsigned long)number;
 	double remainder = number - (double)int_part;
 
 	// Extract digits from the remainder one at a time
@@ -792,21 +786,21 @@ uint16_t Genie::WriteStr(uint16_t index, double number, int digits) {
 	str = &buf[sizeof(buf) - 1 - digits2];
 	while (digits2-- > 0)
 	{
-	remainder *= 10.0;
-	int toPrint = int(remainder);
-	char c = toPrint + 48;
-	*str++ = c;
-	remainder -= toPrint; 
+        remainder *= 10.0;
+        int toPrint = int(remainder);
+        char c = toPrint + 48;
+        *str++ = c;
+        remainder -= toPrint;
 	}
 	str = &buf[sizeof(buf) - 1 - digits];
 	if (digits > 0) *--str = '.';
 
 	// Extract the integer part of the number and print it  
 	do {
-	unsigned long m = int_part;
-	int_part /= 10;
-	char c = m - 10 * int_part;
-	*--str = c < 10 ? c + '0' : c + 'A' - 10;
+        unsigned long m = int_part;
+        int_part /= 10;
+        char c = m - 10 * int_part;
+        *--str = c < 10 ? c + '0' : c + 'A' - 10;
 	} while(int_part);
 
 	// Handle negative numbers
@@ -851,13 +845,13 @@ uint16_t Genie::WriteStrU (uint16_t index, uint16_t *string) {
   }
   buffer[(4+(len*2))-1] = checksum;
 
-  block_dequeue = 1; // disable dequeue
+  block_dequeue = true; // disable dequeue
   while ( pendingACK ) DoEvents(); // wait pending ACKs
   writeMode(buffer,sizeof(buffer)); // write String
-  pendingACK = 1; // enable ACK check
+  pendingACK = true; // enable ACK check
   pendingACK_timeout = millis(); // reset ACK check timer
   while ( pendingACK ) DoEvents(); // wait pending ACKs
-  block_dequeue = 0; // re-enable dequeue
+  block_dequeue = false; // re-enable dequeue
 
   return 1;
 }
@@ -869,7 +863,7 @@ uint16_t Genie::WriteStrU (uint16_t index, uint16_t *string) {
 bool Genie::WriteInhLabel(uint8_t index, const char *string) {
   if ( !displayDetected ) {
     DoEvents();
-    return 0;
+    return false;
   }
   uint8_t checksum = 0, buffer[4+strlen(string)];
   buffer[0] = GENIE_WRITE_INH_LABEL;
@@ -879,18 +873,18 @@ bool Genie::WriteInhLabel(uint8_t index, const char *string) {
   for ( uint8_t i = 0; i < sizeof(buffer) - 1; i++ ) checksum ^= buffer[i];
   buffer[sizeof(buffer) - 1] = checksum;
 
-  block_dequeue = 1; // disable dequeue
+  block_dequeue = true; // disable dequeue
   while ( pendingACK ) DoEvents(); // wait pending ACKs
   writeMode(buffer,sizeof(buffer)); // write String
-  pendingACK = 1; // enable ACK check
+  pendingACK = true; // enable ACK check
   pendingACK_timeout = millis(); // reset ACK check timer
   while ( pendingACK ) DoEvents(); // wait pending ACKs
-  block_dequeue = 0; // re-enable dequeue
+  block_dequeue = false; // re-enable dequeue
 
-  return 1;
+  return true;
 }
 
-bool Genie::WriteInhLabel(uint8_t index, String string) {
+bool Genie::WriteInhLabel(uint8_t index, const String& string) {
   return WriteInhLabel(index, string.c_str());
 }
 
@@ -954,17 +948,15 @@ uint16_t Genie::WriteInhLabel (uint16_t index, long n, int base) {
     if(base == 10) {
       if (N < 0) *--str = '-';
     }
-  }
-  
-  else if(n<0) {
-    unsigned long n2 = (unsigned long)n;
-    uint8_t base2 = base;
-    do {
-    unsigned long m = n2;
-    n2 /= base2;
-    char c = m - base2 * n2;
-    *--str = c < 10 ? c + '0' : c + 'A' - 10;
-    } while(n2);
+  } else {
+      auto n2 = (unsigned long) n;
+      uint8_t base2 = base;
+      do {
+          unsigned long m = n2;
+          n2 /= base2;
+          char c = m - base2 * n2;
+          *--str = c < 10 ? c + '0' : c + 'A' - 10;
+      } while (n2);
   }
   return WriteInhLabel(index, str);
 }
@@ -1035,8 +1027,6 @@ uint16_t Genie::WriteInhLabel (uint16_t index, unsigned n, int base) {
   return WriteInhLabel (index, (unsigned long) n, base);
 }
 
-
-
 // ######################################
 // ## Write WriteInhLabel Floats #######
 // ######################################
@@ -1055,7 +1045,7 @@ uint16_t Genie::WriteInhLabel (uint16_t index, double number, int digits) {
 
   number += rounding;
 
-  unsigned long int_part = (unsigned long)number;
+  auto int_part = (unsigned long)number;
   double remainder = number - (double)int_part;
 
   // Extract digits from the remainder one at a time
@@ -1136,13 +1126,13 @@ int8_t Genie::WriteMagicBytes(uint8_t index, uint8_t *bytes, uint8_t len, uint8_
   for ( uint8_t i = 0; i < sizeof(buffer) - 1; i++ ) checksum ^= buffer[i];
   buffer[sizeof(buffer) - 1] = checksum;
 
-  block_dequeue = 1;
+  block_dequeue = true;
   while ( pendingACK ) DoEvents();
   writeMode(buffer, sizeof(buffer));
 
   if ( report ) {
     while ( pendingACK ) DoEvents();
-    block_dequeue = 0;
+    block_dequeue = false;
     return 1;
   }
 
@@ -1151,20 +1141,20 @@ int8_t Genie::WriteMagicBytes(uint8_t index, uint8_t *bytes, uint8_t len, uint8_
     uint8_t result = DoEvents();
     switch ( result ) {
       case GENIEM_REPORT_BYTES: {
-          block_dequeue = 0;
+          block_dequeue = false;
           return result;
         }
       case GENIE_ACK: {
-          block_dequeue = 0;
+          block_dequeue = false;
           return result;
         }
       case GENIE_NAK: {
-          block_dequeue = 0;
+          block_dequeue = false;
           return result;
         }
     }
   }
-  block_dequeue = 0;
+  block_dequeue = false;
   return -1;
 }
 
@@ -1191,12 +1181,12 @@ int8_t Genie::WriteMagicDBytes(uint8_t index, uint16_t *shorts, uint8_t len, uin
   for ( uint8_t i = 0; i < sizeof(buffer) - 1; i++ ) checksum ^= buffer[i];
   buffer[sizeof(buffer) - 1] = checksum;
 
-  block_dequeue = 1;
+  block_dequeue = true;
   while ( pendingACK ) DoEvents();
   writeMode(buffer, sizeof(buffer));
 
   if ( report ) {
-    block_dequeue = 0;
+    block_dequeue = false;
     while ( pendingACK ) DoEvents();
     return 1;
   }
@@ -1206,26 +1196,22 @@ int8_t Genie::WriteMagicDBytes(uint8_t index, uint16_t *shorts, uint8_t len, uin
     uint8_t result = DoEvents();
     switch ( result ) {
       case GENIEM_REPORT_BYTES: {
-          block_dequeue = 0;
+          block_dequeue = false;
           return result;
         }
       case GENIE_ACK: {
-          block_dequeue = 0;
+          block_dequeue = false;
           return result;
         }
       case GENIE_NAK: {
-          block_dequeue = 0;
+          block_dequeue = false;
           return result;
         }
     }
   }
-  block_dequeue = 0;
+  block_dequeue = false;
   return -1;
 }
-
-
-
-
 
 // ######################################
 // ## GenieObject Class #################
