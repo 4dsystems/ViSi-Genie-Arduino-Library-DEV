@@ -5,6 +5,7 @@
 //      This is intended to be used with the Arduino platform.
 //
 //      Improvements/Updates by
+//        Craig Tadlock & GoToTags, January 2023, gototags.com
 //        Antonio Brewer & 4D Systems Engineering, May 2022, www.4dsystems.com.au
 //        Antonio Brewer & 4D Systems Engineering, February 2022, www.4dsystems.com.au
 //        Antonio Brewer & 4D Systems Engineering, January 2022, www.4dsystems.com.au
@@ -259,8 +260,8 @@ class Genie {
     bool          Begin                       (HardwareSerial &serial);
     bool          Begin                       (Stream &serial, uint16_t txDelay = 0);
     void          AttachDebugStream           (Stream &serial);
-    bool          IsOnline                    ();
-    int16_t       GetForm                     ();
+    bool          IsOnline                    () const;
+    int16_t       GetForm                     () const;
     void          SetForm                     (uint8_t newForm);
     void          SetRecoveryInterval         (uint8_t pulses);
     int32_t       ReadObject                  (uint8_t object, uint8_t index, bool now = 0);
@@ -270,7 +271,7 @@ class Genie {
     uint16_t      WriteIntLedDigits           (uint16_t index, int32_t data);
     bool          WriteContrast               (uint8_t value);
     bool          WriteStr                    (uint8_t index, const char *string);
-    bool          WriteStr                    (uint8_t index, String string);
+    bool          WriteStr                    (uint8_t index, const String& string);
     uint16_t      WriteStr                    (uint16_t index, long n) ;
     uint16_t      WriteStr                    (uint16_t index, long n, int base) ;
     uint16_t      WriteStr                    (uint16_t index, unsigned long n) ;
@@ -286,7 +287,7 @@ class Genie {
     uint16_t      WriteStr                    (uint16_t index, double n);
     uint16_t      WriteStrU                   (uint16_t index, uint16_t *string);
     bool          WriteInhLabel               (uint8_t index, const char *string);
-    bool          WriteInhLabel               (uint8_t index, String string);
+    bool          WriteInhLabel               (uint8_t index, const String& string);
     uint16_t      WriteInhLabel               (uint16_t index);
     uint16_t      WriteInhLabel               (uint16_t index, long n) ;
     uint16_t      WriteInhLabel               (uint16_t index, long n, int base) ;
@@ -308,7 +309,7 @@ class Genie {
     void          AttachEventHandler          (UserEventHandlerPtr userHandler);
     void          AttachMagicByteReader       (UserBytePtr userHandler);
     void          AttachMagicDoubleByteReader (UserDoubleBytePtr userHandler);
-    uint32_t      GetUptime                   ();
+    uint32_t      GetUptime                   () const;
 
     // Genie Magic functions (ViSi-Genie Pro Only)
 
