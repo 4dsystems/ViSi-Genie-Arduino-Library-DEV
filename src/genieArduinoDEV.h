@@ -30,7 +30,7 @@
 //
 //      Copyright (c) 2012-2022 4D Systems Pty Ltd, Sydney, Australia
 /*********************************************************************
-   This file is part of genieArduino:
+  This file is part of genieArduino:
       genieArduino is free software: you can redistribute it and/or modify
       it under the terms of the GNU Lesser General Public License as
       published by the Free Software Foundation, either version 3 of the
@@ -250,8 +250,8 @@ typedef void  (*UserDoubleBytePtr)(uint8_t, uint8_t);
 //
 class Genie {
   public:
-    Genie_Buffer < uint8_t, (uint32_t)pow(2, ceil(log(MAX_GENIE_EVENTS) / log(2))), 6 > _incomming_queue; /* currentForm, cmd, object, index, data1, data2 */
-    Genie_Buffer < uint8_t, (uint32_t)pow(2, ceil(log(MAX_GENIE_EVENTS) / log(2))), 7 > _outgoing_queue; /* currentForm, cmd, object, index, data1, data2, crc */
+    Genie_Buffer < uint8_t, MAX_GENIE_EVENTS, 6 > _incomming_queue; /* currentForm, cmd, object, index, data1, data2 */
+    Genie_Buffer < uint8_t, MAX_GENIE_EVENTS, 7 > _outgoing_queue; /* currentForm, cmd, object, index, data1, data2, crc */
     Genie                                     ();
 #if GENIE_SS_SUPPORT
     bool          Begin                       (SoftwareSerial &serial);
