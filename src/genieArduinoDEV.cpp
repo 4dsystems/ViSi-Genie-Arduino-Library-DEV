@@ -5,6 +5,7 @@
 //      This is intended to be used with the Arduino platform.
 //
 //      Improvements/Updates by
+//        Antonio Brewer & 4D Systems Engineering, January 2025, www.4dsystems.com.au
 //        Antonio Brewer & 4D Systems Engineering, May 2022, www.4dsystems.com.au
 //		  Antonio Brewer & 4D Systems Engineering, February 2022, www.4dsystems.com.au
 //		  Antonio Brewer & 4D Systems Engineering, January 2022, www.4dsystems.com.au
@@ -87,7 +88,7 @@ bool Genie::Begin(HardwareSerial &serial) {
   return Begin_common();
 }
 
-#if GENIE_SS_SUPPORT
+#if defined(GENIE_SS_SUPPORT)
 	bool Genie::Begin(SoftwareSerial &serial) {
 	  deviceSerial = &serial;
 	  tx_delay = 1000;

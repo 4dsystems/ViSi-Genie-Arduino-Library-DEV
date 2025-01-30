@@ -5,6 +5,7 @@
 //      This is intended to be used with the Arduino platform.
 //
 //      Improvements/Updates by
+//        Antonio Brewer & 4D Systems Engineering, January 2025, www.4dsystems.com.au
 //        Antonio Brewer & 4D Systems Engineering, May 2022, www.4dsystems.com.au
 //        Antonio Brewer & 4D Systems Engineering, February 2022, www.4dsystems.com.au
 //        Antonio Brewer & 4D Systems Engineering, January 2022, www.4dsystems.com.au
@@ -62,24 +63,26 @@
 #include "genie_buffer.h"
 #include <stdint.h>
 
-#define GENIE_SS_SUPPORT !defined(ARDUINO_ARCH_SAM) \
-                      && !defined(ARDUINO_ARCH_SAMD) \
-                      && !defined(ARDUINO_ARCH_RP2040) \
-                      && !defined(ESP32) \
-                      && !defined(ESP8266)
-                      // This lists the known board families that
-                      // don't support SoftwareSerial.
-                      // If you add to this list, please contact us
-                      // to gain official support in the library.
+#if !defined(ARDUINO_ARCH_SAM) \ 
+    && !defined(ARDUINO_ARCH_SAMD) \
+    && !defined(ARDUINO_ARCH_RP2040) \
+    && !defined(ESP32) \
+    && !defined(ESP8266)
+    // This lists the known board families that
+    // don't support SoftwareSerial.
+    // If you add to this list, please contact us
+    // to gain official support in the library.
+	#define GENIE_SS_SUPPORT 1
+#endif
 
-#if GENIE_SS_SUPPORT
+#if defined(GENIE_SS_SUPPORT)
 #include <SoftwareSerial.h>
 #endif
 
 #ifndef genieArduinoDEV_h
 #define genieArduinoDEV_h
 
-#define GENIE_VERSION    "GenieArduino 2022"   // DD-MM-YYYY
+#define GENIE_VERSION    "GenieArduino 2025"   // DD-MM-YYYY
 
 // Genie commands & replys:
 
@@ -250,10 +253,10 @@ typedef void  (*UserDoubleBytePtr)(uint8_t, uint8_t);
 //
 class Genie {
   public:
-    Genie_Buffer < uint8_t, (uint32_t)pow(2, ceil(log(MAX_GENIE_EVENTS) / log(2))), 6 > _incomming_queue; /* currentForm, cmd, object, index, data1, data2 */
-    Genie_Buffer < uint8_t, (uint32_t)pow(2, ceil(log(MAX_GENIE_EVENTS) / log(2))), 7 > _outgoing_queue; /* currentForm, cmd, object, index, data1, data2, crc */
+    Genie_Buffer < uint8_t, (uint32_t)MAX_GENIE_EVENTS, 6 > _incomming_queue; /* currentForm, cmd, object, index, data1, data2 */
+    Genie_Buffer < uint8_t, (uint32_t)MAX_GENIE_EVENTS, 7 > _outgoing_queue; /* currentForm, cmd, object, index, data1, data2, crc */
     Genie                                     ();
-#if GENIE_SS_SUPPORT
+#if defined(GENIE_SS_SUPPORT)
     bool          Begin                       (SoftwareSerial &serial);
 #endif
     bool          Begin                       (HardwareSerial &serial);
