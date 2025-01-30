@@ -63,7 +63,7 @@
 #include "genie_buffer.h"
 #include <stdint.h>
 
-#if !defined(ARDUINO_ARCH_SAM) \ 
+#if !defined(ARDUINO_ARCH_SAM) \
     && !defined(ARDUINO_ARCH_SAMD) \
     && !defined(ARDUINO_ARCH_RP2040) \
     && !defined(ESP32) \
