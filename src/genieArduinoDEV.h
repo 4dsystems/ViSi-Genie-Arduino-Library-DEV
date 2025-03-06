@@ -1,35 +1,21 @@
-/////////////////////// GenieArduino DEV ///////////////////////
+/////////////////////// GenieArduinoDEV ///////////////////////
 //
 //      Library to utilize the 4D Systems Genie interface to displays
 //      that have been created using the Visi-Genie creator platform.
 //      This is intended to be used with the Arduino platform.
 //
-//      Improvements/Updates by
-//        Antonio Brewer & 4D Systems Engineering, January 2025, www.4dsystems.com.au
-//        Antonio Brewer & 4D Systems Engineering, May 2022, www.4dsystems.com.au
-//        Antonio Brewer & 4D Systems Engineering, February 2022, www.4dsystems.com.au
-//        Antonio Brewer & 4D Systems Engineering, January 2022, www.4dsystems.com.au
-//        Antonio Brewer & 4D Systems Engineering, July 2021, www.4dsystems.com.au
-//        Antonio Brewer & 4D Systems Engineering, June 2018, www.4dsystems.com.au
-//        4D Systems Engineering, August 2017, www.4dsystems.com.au
-//        Antonio Brewer & 4D Systems Engineering, July 2017, www.4dsystems.com.au
-//        4D Systems Engineering, October 2015, www.4dsystems.com.au
-//        4D Systems Engineering, September 2015, www.4dsystems.com.au
-//        4D Systems Engineering, August 2015, www.4dsystems.com.au
-//        4D Systems Engineering, May 2015, www.4dsystems.com.au
-//        Matt Jenkins, March 2015, www.majenko.com
-//        Clinton Keith, January 2015, www.clintonkeith.com
-//        4D Systems Engineering, July 2014, www.4dsystems.com.au
-//        Clinton Keith, March 2014, www.clintonkeith.com
-//        Clinton Keith, January 2014, www.clintonkeith.com
-//        4D Systems Engineering, January 2014, www.4dsystems.com.au
-//        4D Systems Engineering, September 2013, www.4dsystems.com.au
+//      Contributions/Improvements/Updates from
+//        4D Systems Engineering, www.4dsystems.com.au
+//        Antonio Brewer, 2017-Present
+//      Past Contributions from
+//        Matt Jenkins, 2015, www.majenko.com
+//        Clinton Keith, 2014/2015, www.clintonkeith.com
 //      Written by
 //        Rob Gray (GRAYnomad), June 2013, www.robgray.com
 //      Based on code by
-//        Gordon Henderson, February 2013, <projects@drogon.net>
+//        Gordon Henderson, February 2013, www.drogon.net
 //
-//      Copyright (c) 2012-2022 4D Systems Pty Ltd, Sydney, Australia
+//      Copyright (c) 2012-2025 4D Systems Pty Ltd, Sydney, Australia
 /*********************************************************************
    This file is part of genieArduino:
       genieArduino is free software: you can redistribute it and/or modify
@@ -63,15 +49,16 @@
 #include "genie_buffer.h"
 #include <stdint.h>
 
-#if !defined(ARDUINO_ARCH_SAM) \
-    && !defined(ARDUINO_ARCH_SAMD) \
-    && !defined(ARDUINO_ARCH_RP2040) \
-    && !defined(ESP32) \
-    && !defined(ESP8266)
-    // This lists the known board families that
-    // don't support SoftwareSerial.
-    // If you add to this list, please contact us
-    // to gain official support in the library.
+#if defined(AVR)
+	// This allows SoftwareSerial to be used instead of
+	// hardware serial, which typically is only for 
+	// AVR (Atmel) based Arduino boards. 
+	// There are some other platforms such as
+	// Teensy, and possibly Particle that could utilise
+	// SoftwareSerial, however these can be added 
+	// manually or upon request.
+	// ESP32 and Tiny have their own versions of SoftwareSerial
+	// but are not considered as built-in options for this libary.
 	#define GENIE_SS_SUPPORT 1
 #endif
 

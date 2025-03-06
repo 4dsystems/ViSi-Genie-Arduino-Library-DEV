@@ -41,7 +41,7 @@ Inside the library are 5 example sketches, to assist with getting started using 
 
 ## Tested with
 
-This library has been tested on the Duemilanove, Uno, Mega 1280, Mega 2560, Leonardo, Chipkit Max32, Due, Teensy, Yun (Software Serial only), Raspberry Pi Pico, Various SAM/SAMD boards, Teknic ClearCore. 
+This library has been tested on the Duemilanove, Uno, Mega 1280, Mega 2560, Leonardo, Chipkit Max32, Due, Teensy, Yun (Software Serial only), Raspberry Pi Pico, Various SAM/SAMD boards, Teknic ClearCore, Uno R4 Minima / Wifi, Arduino PLC (Opta). 
 Any problems discovered with this library, please contact technical support so fixes can be put in place, or seek support from our forum.
 
 ## Compatible 4D Systems Display Modules
@@ -85,7 +85,7 @@ Assigns a SoftwareSerial *serial* object to the Genie instance
         genie.Begin(GenieSerial); // Sets GenieSerial to be used by the Genie instance
     }
 
-##### **Note**: _This is only available for boards that support SoftwareSerial. In case of compilation issues with SoftwareSerial, your board might not be supported by the SoftwareSerial library. Please submit an issue report [here](/issues/new)._
+##### **Note**: _This is only available for boards that support SoftwareSerial (typically AVR boards only). In case of compilation issues with SoftwareSerial, your board might not be supported by the SoftwareSerial library. Please submit an issue report [here](/issues/new)._
 
 ### Begin(Stream &serial, uint16_t txDelay)
 Assigns a Stream *serial* object to the Genie instance. This allows alternative SoftwareSerial libraries to work with the library
