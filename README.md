@@ -191,6 +191,19 @@ A full list of available objects (ex: GENIE_OBJ_GAUGE, GENIE_OBJ_SLIDER etc) can
 
     genie.WriteObject(GENIE_OBJ_GAUGE, 0, 50); // Sets Gauge0 to 50
 
+### WriteObjectPriority(uint16_t object, uint16_t index, uint16_t data)
+Updates the widget, specified by *object* (ex: GENIE_OBJ_GAUGE) and *index*, to a new value specified by *data*, immediately - bypassing the buffer.
+This is in line with how the original genieArduino library performed WriteObjects for everything. Should only be used when really needed.
+A full list of available objects (ex: GENIE_OBJ_GAUGE, GENIE_OBJ_SLIDER etc) can be found at the bottom of this Readme.
+
+| Parameters | Description |
+|:----------:| ----------- |
+| object     | Type of target widget |
+| index      | Index number of target widget |
+| data       | New value for the target widget |
+
+    genie.WriteObjectPriority(GENIE_OBJ_GAUGE, 1, 24); // Sets Gauge1 to 24
+	
 ### WriteIntLedDigits(uint16_t index, int16_t data)
 Updates the Internal LedDigits specified by *index* to a new 16-bit value, specified by *data*. The widget parameter *Format* in ViSi Genie project should be set to Int16. Internal LedDigits are available for Diablo and Pixxi displays.
 
