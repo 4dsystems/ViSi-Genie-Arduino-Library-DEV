@@ -139,7 +139,8 @@ Returns the time in milliseconds that the display has been continuously online.
     unsigned long uptime = genie.GetUptime();
 
 ### GetForm()
-Returns whether or not the display is detected
+Returns the current Form the display is on.
+Can be used with a switch statement for applying a different action for any given Form.
 
     switch (genie.GetForm()) {
         case 0:
