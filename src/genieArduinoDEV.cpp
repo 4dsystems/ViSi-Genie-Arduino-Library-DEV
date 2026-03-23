@@ -272,6 +272,9 @@ bool Genie::WriteObject(uint8_t object, uint8_t index, uint16_t data) {
   return 1;
 }
 
+bool Genie::WriteObject(uint8_t object, uint8_t index, float data) {
+  return WriteObject(object, index, round(data));
+}
 
 // ######################################
 // ## Write Object Priority Task ########
@@ -298,8 +301,9 @@ bool Genie::WriteObjectPriority(uint8_t object, uint8_t index, uint16_t data) {
   return 1;
 }
 
-
-
+bool Genie::WriteObjectPriority(uint8_t object, uint8_t index, float data) {
+  return WriteObjectPriority(object, index, round(data));
+}
 
 // ######################################
 // ## Write Contrast #################### 
