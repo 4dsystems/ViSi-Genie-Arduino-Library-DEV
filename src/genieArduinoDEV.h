@@ -255,9 +255,9 @@ class Genie {
     void          SetRecoveryInterval         (uint8_t pulses);
     int32_t       ReadObject                  (uint8_t object, uint8_t index, bool now = 0);
     bool          WriteObject                 (uint8_t object, uint8_t index, uint16_t data);
-    bool          WriteObject                 (uint8_t object, uint8_t index, float data);
+    bool          WriteObject                 (uint8_t object, uint8_t index, float data, uint scale = 1);
 	  bool          WriteObjectPriority         (uint8_t object, uint8_t index, uint16_t data);
-    bool          WriteObjectPriority         (uint8_t object, uint8_t index, float data);
+    bool          WriteObjectPriority         (uint8_t object, uint8_t index, float data, uint scale = 1);
     uint16_t      WriteIntLedDigits           (uint16_t index, int16_t data);
     uint16_t      WriteIntLedDigits           (uint16_t index, float data);
     uint16_t      WriteIntLedDigits           (uint16_t index, int32_t data);
